@@ -99,13 +99,13 @@ flowchart TD
 
 ### Separate Queues for Each Priority:
 
-```mermaid
 flowchart TD
-    Uploader --> Q1[Queue (Priority 1)]
-    Uploader --> Q2[Queue (Priority 2)]
-    Q1 --> T1[High Priority Transcoder Pool]
-    Q2 --> T2[Low Priority Transcoder Pool]
-```
+    Uploader[Video Uploader] --> Q1[Queue: Priority 1]
+    Uploader --> Q2[Queue: Priority 2]
+
+    Q1 --> Pool1[Transcoder Pool (High Priority)]
+    Q2 --> Pool2[Transcoder Pool (Low Priority)]
+
 
 ---
 
