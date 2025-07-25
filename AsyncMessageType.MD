@@ -36,7 +36,7 @@ In the **publish/subscribe** pattern, messages are sent to a topic by a publishe
 
 ## 3. Queueing Model vs. Pub/Sub Model
 
-As shown in the *diagram on page 2*:
+
 
 - **Queueing Model**:
   - Used for point-to-point communication.
