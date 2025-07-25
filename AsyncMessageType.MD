@@ -1,121 +1,132 @@
 # Asynchronous Messaging Patterns
 
-Asynchronous messaging patterns are communication techniques that allow systems and services to interact without blocking operations, enabling scalability, fault tolerance, and better resource utilization. These patterns rely on messaging systems to handle the exchange of data.
+Asynchronous messaging patterns are communication techniques that allow systems and services to interact without blocking operations, enabling scalability, fault tolerance, and better resource utilization.
 
 ---
 
 ## 1. Message Queuing (Point-to-Point)
 
-In the **message queuing** pattern, a producer sends messages to a queue. Each message is consumed by only one consumer.
+In this pattern, a producer sends messages to a queue, and each message is consumed by only one consumer.
 
-- **Producer**: Sends the message.
-- **Queue**: Holds messages until they are processed.
-- **Consumer**: Retrieves and processes messages.
+```mermaid
+sequenceDiagram
+    participant Producer
+    participant Queue
+    participant Consumer
 
-**Behavior**: Only a single consumer receives each message.
-
-**Use Case**: Background jobs, video processing pipelines, task offloading.
-
+    Producer->>Queue: Send message
+    Queue->>Consumer: Deliver message
+```
 
 ---
 
 ## 2. Publish/Subscribe (Pub/Sub)
 
-In the **publish/subscribe** pattern, messages are sent to a topic by a publisher. All subscribers to that topic receive a copy of the message.
+In this pattern, a publisher sends messages to a topic. All subscribers to that topic receive a copy.
 
-- **Publisher**: Sends messages to a topic.
-- **Topic**: A logical channel for message delivery.
-- **Subscribers**: Receive messages from the topic.
-
-**Behavior**: Every subscriber receives a copy of the same message.
-
-**Use Case**: Broadcasting notifications, event-driven systems.
-
+```mermaid
+graph TD
+    Publisher --> Topic
+    Topic --> Subscriber1
+    Topic --> Subscriber2
+```
 
 ---
 
-## 3. Queueing Model vs. Pub/Sub Model
+## 3. Queueing Model vs. Pub/Sub Model (Video Processing Example)
 
+This represents the flow of a video processing pipeline using both queueing and publish/subscribe models.
 
+```mermaid
+flowchart TD
+    subgraph Queueing_Model
+        Uploader1[Video Uploader] --> MQ1[Messaging System]
+        MQ1 --> Transcoder[Video Transcoder]
+        Uploader1 --> Storage1[Object Storage]
+        Transcoder --> Storage2[Object Storage]
+    end
 
-- **Queueing Model**:
-  - Used for point-to-point communication.
-  - A video uploader sends metadata to a queue.
-  - A transcoder processes it.
-  - Object storage is used to store video bytes.
-
-- **Publish/Subscribe Model**:
-  - After transcoding, the metadata is published.
-  - Multiple systems (database, cache, notification service, CDN) subscribe and receive the metadata.
-
+    subgraph PubSub_Model
+        Transcoder --> MQ2[Messaging System]
+        MQ2 --> DB[Database]
+        MQ2 --> Cache[Cache]
+        MQ2 --> Notif[Notification Service]
+        MQ2 --> CDN[CDN]
+    end
+```
 ---
 
 ## 4. Competing Consumers
 
-This pattern supports **parallelism and scalability** by allowing multiple consumers to compete for messages from the same queue.
+Multiple consumer instances process messages from a shared queue in parallel.
 
-- **Multiple transcoders** pull tasks from the queue.
-- Messages are processed in parallel.
-- System continues to work even if some consumers fail.
-- More instances can be added to handle increased load.
-
-This improves **performance**, **availability**, and **scalability**.
-
+```mermaid
+flowchart TD
+    Uploader[Video Uploader] --> Queue
+    Queue --> T1[Transcoder Instance 1]
+    Queue --> T2[Transcoder Instance 2]
+    Queue --> Tn[Transcoder Instance N]
+```
 
 ---
 
 ## 5. Request/Response Messaging
 
-This pattern enables asynchronous communication while still allowing the sender to receive a response.
+Asynchronous communication with response tracking using `replyTo` and `correlationId`.
 
-- **Request message** includes:
-  - `replyTo`: The callback queue name.
-  - `correlationId`: A unique identifier to match the response.
-- The **response message** includes:
-  - The same `correlationId`.
+```mermaid
+sequenceDiagram
+    participant Uploader
+    participant Transcoder
+    participant CallbackQueue
 
-Useful for workflows where a reply is expected but blocking behavior is undesirable.
-
+    Uploader->>Transcoder: Request (replyTo: abc, correlationId: 123)
+    Transcoder->>CallbackQueue: Response (correlationId: 123)
+```
 
 
 ---
 
 ## 6. Priority Queue
 
-The **priority queue** pattern allows messages to be processed based on priority levels.
+### Native Support in a Single Queue:
 
-### Two approaches:
+```mermaid
+flowchart TD
+    Uploader --> PQueue[Priority Queue]
+    PQueue --> Transcoder
+    PQueue:::priority
 
-1. **Native Priority Queue Support**:
-   - Messages have priority levels (e.g., 1, 2).
-   - A single queue holds all messages, and consumers prioritize based on embedded priority.
+    classDef priority fill:#ffe6cc;
+```
 
-2. **Separate Queues for Each Priority**:
-   - Each priority level has a dedicated queue.
-   - Higher priority queues can be serviced by a larger pool of instances.
+### Separate Queues for Each Priority:
 
-This allows urgent messages to be processed faster.
-
+```mermaid
+flowchart TD
+    Uploader --> Q1[Queue (Priority 1)]
+    Uploader --> Q2[Queue (Priority 2)]
+    Q1 --> T1[High Priority Transcoder Pool]
+    Q2 --> T2[Low Priority Transcoder Pool]
+```
 
 ---
 
 ## 7. Claim Check Pattern
 
-The **claim check** pattern solves the issue of **large message sizes**.
+Stores large payloads externally and passes references in messages.
 
-### Problem with Large Messages:
-- Messaging systems have size limits.
-- Large messages can degrade performance and memory usage.
+```mermaid
+flowchart TD
+    Uploader --> Queue1[Queue]
+    Uploader --> Storage[Shared Storage]
+    Queue1 --> Transcoder
+    Transcoder --> Storage
+```
 
-### Solution:
-- The actual payload (e.g., a large video) is stored in shared storage.
-- A small message (containing a reference to the large message) is sent through the queue.
-- The consumer retrieves the actual data from storage.
-
-This optimizes messaging system performance.
-
-
-
+- The queue contains a small message with a reference to the large file stored in shared storage.
+- Transcoder retrieves the actual file using the reference.
 
 
 ---
+
