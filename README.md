@@ -1,136 +1,168 @@
+# MOCK Quantitative Signal Design and Backtesting Challenge
 
-# Fake Take-Home Assessment: Real-Time Dealer Dislocation Detection
+Thank you for your interest in the technical interview process. This case study is intended to evaluate your ability to process high-frequency market data, extract meaningful signals, and rigorously test your ideas using a systematic framework.
 
-## Overview
-
-This take-home exercise is designed to evaluate your ability to build scalable, robust, and insightful systems for real-time market data analysis. You will work with FX quote data to identify and characterize pricing dislocations across multiple simulated liquidity providers. The project reflects realistic challenges encountered in low-latency trading infrastructure, with an emphasis on data quality, engineering design, and quantitative reasoning.
-
-This assessment should take approximately 6–10 hours to complete. Please submit your code, documentation, and any relevant analysis within 48 hours of receiving this prompt.
+You will be working with limit order book (LOB) and trade data to develop a short-term trading strategy. Your submission should reflect a clear understanding of market microstructure, solid programming skills, and attention to detail.
 
 ---
 
 ## Objective
 
-Design and implement a system that detects when a dealer’s quoted price for an FX pair deviates significantly from the market consensus. You will use historical tick data to simulate multiple dealers and analyze real-time dislocations.
+Using the provided market data, you are expected to:
+
+1. Efficiently parse and preprocess raw LOB and trade data
+2. Engineer a set of well-justified features that capture short-term market dynamics
+3. Design a signal generation model based on those features
+4. Implement a backtesting framework to evaluate your strategy
+5. Produce a concise technical report explaining your approach and results
+
+This is an open-ended problem. There are no right answers—only better assumptions, cleaner code, and more defensible reasoning.
 
 ---
 
 ## Dataset
 
-Please download free EUR/USD tick-level FX data from:
+You will be provided with two files:
 
-**https://www.histdata.com/download-free-forex-data/**
+- `lob_data.csv`: Top-10 depth of book snapshots at millisecond resolution
+- `trades.csv`: Executed trades with timestamps, price, and volume
 
-Select:
-- **Symbol**: EUR/USD
-- **Timeframe**: Tick
-- **Month**: January 2023 (or any recent available)
-- File format: CSV
+Each contains the following fields:
 
-Each row represents a new quote with the following structure:
+### lob_data.csv
+- `timestamp` (int, in milliseconds)
+- `bid_price_1` to `bid_price_10`, `bid_size_1` to `bid_size_10`
+- `ask_price_1` to `ask_price_10`, `ask_size_1` to `ask_size_10`
 
-```
-Timestamp, Bid, Ask
-2023-01-02 00:00:01.123, 1.07001, 1.07021
-...
-```
+### trades.csv
+- `timestamp` (int, in milliseconds)
+- `price` (float)
+- `size` (int)
+
+Data may be unordered, noisy, or incomplete. Your preprocessing should account for this.
 
 ---
 
-## Tasks
+## Technical Requirements
 
-### 1. Simulate Multiple Dealers
+### 1. Data Handling
 
-You will create synthetic quote streams for at least **5 distinct dealers** by introducing controlled variability to the raw data. For each dealer, apply:
-- Latency (e.g., random delay between 50ms–200ms)
-- Spread model (tight, wide, stale, noisy)
-- Notional weight or quoting volume (optional)
+- Efficiently load and process the data (expect ~1 million rows per file)
+- Align trade and book data on a consistent clock (e.g., fixed-width intervals)
+- Handle missing or malformed data without silently failing
+- Memory and time efficiency will be assessed
 
-Each dealer should exhibit a distinguishable quoting pattern. Ensure the combined output maintains realistic market behavior.
+### 2. Feature Engineering
 
-### 2. Implement a Real-Time Aggregator
+You must engineer a minimum of **five features** that reflect market state or dynamics. Examples may include, but are not limited to:
 
-Create a process that:
-- Ingests incoming quotes chronologically
-- Maintains a sliding time window of recent quotes (e.g., last 500ms)
-- Computes a synthetic mid-price from other dealers (excluding the current one), using a weighted or unweighted average
-- Tracks standard deviation of the mids in the window
+- Order Book Imbalance (OBI)
+- Price momentum
+- Rolling volatility (e.g., standard deviation over past N intervals)
+- Relative depth or spread changes
+- Trade flow imbalance
 
-### 3. Detect Dislocations
+You are expected to justify your choice of features quantitatively or theoretically.
 
-Define a dislocation event as follows:
-- A dealer is considered "dislocated" if:
-  
-  ```
-  |dealer_mid - synthetic_mid| > max(2 × std_dev, 0.00010)
-  ```
+### 3. Signal Construction
 
-- Mark the start and end of dislocation periods if:
-  - The condition persists for N ≥ 3 consecutive quotes or
-  - The duration exceeds 500 milliseconds
+Develop a signal (binary or ternary) that takes on values such as:
 
-Track ongoing dislocations in real time and emit structured events.
+- +1: Enter long
+- -1: Enter short
+- 0: Hold/flat
 
-### 4. Metrics and Diagnostics
+Signal generation may be rule-based or model-driven. If using a machine learning approach, explain your labeling methodology and cross-validation setup. Do not use libraries that abstract away model logic (e.g., AutoML, pipelines).
 
-For each dealer and trading session, compute:
-- Total dislocation time (ms)
-- Number of dislocation events
-- Max dislocation magnitude
-- Quote frequency
-- Average spread
-- Any notable correlations or edge cases
+### 4. Backtesting Framework
 
-Provide diagnostics to differentiate between:
-- Latency-based dislocations
-- Intentional wide quoting
-- Stale quote behavior
+You must implement your own backtesting system from scratch. It should:
 
-### 5. Optional Extension: System Design
+- Simulate intraday trading over at least three distinct trading sessions
+- Track trade execution, inventory, and slippage
+- Include basic risk controls (e.g., max position size, stop-loss)
+- Output key metrics:
+  - Total and per-trade PnL
+  - Sharpe Ratio
+  - Maximum drawdown
+  - Trade frequency and win rate
+- Optional: incorporate latency, queue dynamics, or price impact models
 
-Write a short design document explaining how your system could be deployed in production. Discuss:
-- Real-time ingestion (e.g., Kafka, shared memory)
-- State management
-- Fault tolerance
-- Monitoring and alerting
-- Performance tradeoffs (latency vs throughput)
+### 5. Analysis and Reporting
+
+Prepare a technical report (2–3 pages maximum) that includes:
+
+- A summary of your methodology
+- Description and justification of features
+- Explanation of signal logic
+- Summary of backtest results
+- Discussion of assumptions and limitations
+- Clear proposals for how the strategy might be extended or improved
+
+Reports that lack depth or are overly verbose will be penalized.
 
 ---
 
 ## Deliverables
 
-1. **Codebase** with clear structure and documentation
-2. **README.md** containing:
-   - Build/run instructions
-   - Design explanation
-   - Summary of assumptions
-   - Observations or takeaways
-3. `dislocations.csv`: Output file with dislocation events in the format:
-   ```
-   start_ts, end_ts, dealer_id, max_dislocation, avg_spread_during
-   ```
-4. `metrics.csv`: Summary file with per-dealer statistics
-5. Visualizations (optional but encouraged)
+Your submission should include:
 
-Please ensure your solution is self-contained and runnable with reasonable memory and time constraints (< 5 minutes on a typical laptop).
+- A Git repository or zipped folder containing all code
+- A `README.md` file explaining:
+  - How to run your pipeline
+  - Python version and dependencies
+  - Directory structure
+- A `report.pdf` or `report.md` file
+- At least three charts:
+  - Signal vs. mid-price or returns
+  - Cumulative PnL
+  - Feature correlation or feature importance (if applicable)
+- Optional:
+  - Unit tests for key modules
+  - Config files or CLI support
+  - Modular components for feature generation and backtesting
+
+Submissions that are incomplete, unstructured, or overly reliant on libraries like Backtrader, QuantConnect, or Zipline will not be considered.
 
 ---
+
 
 ## Evaluation Criteria
 
-| Category           | Description |
-|--------------------|-------------|
-| **Correctness**     | Dislocation detection logic is valid and robust |
-| **Engineering**     | Code is clean, modular, documented, and testable |
-| **Performance**     | Can process large tick datasets efficiently |
-| **Insight**         | Distinguishes between genuine and noise-induced dislocations |
-| **Communication**   | Results and rationale are clearly presented |
+| Dimension         | Criteria                                                                 |
+|-------------------|--------------------------------------------------------------------------|
+| Code Quality      | Modular, well-documented, logically organized                            |
+| Feature Design    | Originality, relevance to market behavior, and clear justification       |
+| Signal Logic      | Coherence, robustness, and transparency of decision process              |
+| Backtesting       | Correctness, realism, and interpretability of metrics                    |
+| Analytical Rigor  | Depth of insights, avoidance of overfitting, and recognition of limits   |
+| Communication     | Clarity and structure of the report, reproducibility of results          |
 
 ---
 
-## Submission
+## Constraints and Assumptions
 
-Please submit a zip file or Git repository link with your completed project. Ensure all instructions to run your solution are included.
+- You may not use external financial libraries for signal generation or backtesting.
+- You may use any public Python libraries (e.g., `pandas`, `numpy`, `scikit-learn`, `matplotlib`) for general computation and visualization.
+- You may not use pre-trained models or external datasets.
+- You are expected to build all core components (e.g., signal logic, backtester) yourself.
+
+---
+
+## Submission Instructions
+
+Submit your work as a private GitHub repository or compressed archive to the designated contact or portal. Include your name and a brief summary in the repository's `README.md`.
+
+Do not include any proprietary or sensitive data in your submission.
+
+---
+
+## Final Note
+
+This challenge is intended to reflect the kinds of problems you will encounter in a real quantitative development or research role. You are encouraged to focus on correctness, defensible reasoning, and engineering discipline over complexity or excessive ambition.
+
+There is no perfect solution—only thoughtful approximations under uncertainty.
+
 
 Thank you for your time and effort.
 
