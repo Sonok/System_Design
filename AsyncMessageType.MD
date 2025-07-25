@@ -10,9 +10,6 @@ In this pattern, a producer sends messages to a queue, and each message is consu
 
 ```mermaid
 sequenceDiagram
-    participant Producer
-    participant Queue
-    participant Consumer
 
     Producer->>Queue: Send message
     Queue->>Consumer: Deliver message
